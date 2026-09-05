@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>X投稿メーカー Version0.1</title>
+  <meta name="description" content="一言から140文字以内のX投稿案を3つ生成するAI補助ツール" />
+  <meta name="theme-color" content="#111111" />
+
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --card: #ffffff;
+      --text: #111111;
+      --sub: #666b73;
+      --line: #e4e7eb;
+      --accent: #111111;
+      --accentText: #ffffff;
+      --soft: #f1f3f5;
+      --danger: #b42318;
+      --success: #087443;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+      --radius: 18px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family:
+        -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans JP",
+        "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    button, textarea, select {
+      font: inherit;
+    }
+
+    .wrap {
+      width: min(760px, calc(100% - 24px));
+      margin: 0 auto;
+      padding: 28px 0 56px;
+    }
+
+    .hero {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .hero h1 {
+      margin: 0 0 8px;
+      font-size: clamp(26px, 7vw, 38px);
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+
+    .hero p {
+      margin: 0;
+      color: var(--sub);
+      font-size: 14px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    .hint {
+      display: block;
+      margin-top: 6px;
+      color: var(--sub);
+      font-size: 12px;
+      font-weight: 400;
+    }
+
+    textarea,
+    select {
+      width: 100%;
+      border: 1px solid #d7dbe0;
+      border-radius: 12px;
+      background: #fff;
+      color: var(--text);
+      padding: 13px 14px;
+      outline: none;
+      transition: border-color .15s ease, box-shadow .15s ease;
+    }
+
+    textarea {
+      min-height: 128px;
+      resize: vertical;
+    }
+
+    textarea:focus,
+    select:focus {
+      border-color: #858b94;
+      box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field {
+      margin-bottom: 14px;
+    }
+
+    .field:last-child {
+      margin-bottom: 0;
+    }
+
+    .counter {
+      text-align: right;
+      color: var(--sub);
+      font-size: 12px;
+      margin-top: 6px;
+    }
+
+    .primary {
+      width: 100%;
+      border: 0;
+      border-radius: 14px;
+      background: var(--accent);
+      color: var(--accentText);
+      padding: 15px 18px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: opacity .15s ease, transform .05s ease;
+    }
+
+    .primary:active {
+      transform: translateY(1px);
+    }
+
+    .primary:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+
+    .status {
+      display: none;
+      margin-top: 12px;
+      padding: 11px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+    }
+
+    .status.show {
+      display: block;
+    }
+
+    .status.error {
+      background: #fef3f2;
+      color: var(--danger);
+      border: 1px solid #fecdca;
+    }
+
+    .status.info {
+      background: #f2f4f7;
+      color: #475467;
+      border: 1px solid #eaecf0;
+    }
+
+    .status.success {
+      background: #ecfdf3;
+      color: var(--success);
+      border: 1px solid #abefc6;
+    }
+
+    .results {
+      display: none;
+      margin-top: 18px;
+    }
+
+    .results.show {
+      display: block;
+    }
+
+    .results-title {
+      margin: 0 0 10px;
+      font-size: 18px;
+    }
+
+    .post-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 12px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.04);
+    }
+
+    .post-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 10px;
+    }
+
+    .angle {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 4px 9px;
+      border-radius: 999px;
+      background: var(--soft);
+      font-size: 12px;
+      font-weight: 800;
+    }
+
+    .length {
+      color: var(--sub);
+      font-size: 12px;
+      white-space: nowrap;
+    }
+
+    .post-text {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 16px;
+    }
+
+    .post-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+    }
+
+    .copy-btn {
+      flex: 1;
+      border: 1px solid #d7dbe0;
+      background: #fff;
+      color: #111;
+      border-radius: 12px;
+      padding: 11px 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .copy-btn.copied {
+      border-color: #75c79b;
+      background: #ecfdf3;
+      color: var(--success);
+    }
+
+    .privacy {
+      margin-top: 18px;
+      color: var(--sub);
+      font-size: 11px;
+      text-align: center;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      margin-right: 8px;
+      border: 2px solid rgba(255,255,255,.35);
+      border-top-color: #fff;
+      border-radius: 50%;
+      vertical-align: -3px;
+      animation: spin .8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    @media (max-width: 620px) {
+      .wrap {
+        width: min(100% - 16px, 760px);
+        padding-top: 18px;
+      }
+
+      .card,
+      .post-card {
+        border-radius: 15px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .hero p {
+        font-size: 13px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <h1>一言だけで140文字。<br>X投稿メーカー</h1>
+      <p>思いついたことを入れるだけ。AIが投稿案を3つ作ります。</p>
+    </section>
+
+    <section class="card">
+      <div class="field">
+        <label for="seed_text">
+          投稿したいこと
+          <span class="hint">今日あったこと・思ったことを一言で。スマホの音声入力も使えます。</span>
+        </label>
+        <textarea
+          id="seed_text"
+          maxlength="500"
+          placeholder="例：AIツールを1日で作って公開した。完成度を上げ続けるより、まず人に使ってもらった方が改善点がわかりやすかった。"
+        ></textarea>
+        <div class="counter"><span id="inputCount">0</span> / 500</div>
+      </div>
+
+      <div class="grid">
+        <div class="field">
+          <label for="user_type">あなたは？</label>
+          <select id="user_type">
+            <option value="経営者">経営者</option>
+            <option value="個人事業主">個人事業主</option>
+            <option value="マーケター">マーケター</option>
+            <option value="エンジニア">エンジニア</option>
+            <option value="営業">営業</option>
+            <option value="クリエイター">クリエイター</option>
+            <option value="会社員">会社員</option>
+            <option value="その他">その他</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="purpose">投稿の目的</label>
+          <select id="purpose">
+            <option value="共感">共感</option>
+            <option value="認知">認知</option>
+            <option value="専門性を伝える">専門性を伝える</option>
+            <option value="集客">集客</option>
+            <option value="フォロワーを増やす">フォロワーを増やす</option>
+            <option value="交流">交流</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="audience">誰に伝えたい？</label>
+          <select id="audience">
+            <option value="一般の人">一般の人</option>
+            <option value="同業者">同業者</option>
+            <option value="見込み客">見込み客</option>
+            <option value="既存フォロワー">既存フォロワー</option>
+            <option value="経営者">経営者</option>
+            <option value="会社員">会社員</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label for="tone">どんな感じ？</label>
+          <select id="tone">
+            <option value="自然">自然</option>
+            <option value="専門家">専門家</option>
+            <option value="あるある">あるある</option>
+            <option value="面白い">面白い</option>
+            <option value="軽い毒舌">軽い毒舌</option>
+            <option value="自虐">自虐</option>
+            <option value="淡々">淡々</option>
+          </select>
+        </div>
+      </div>
+
+      <button id="generateBtn" class="primary" type="button">X投稿を3案つくる</button>
+
+      <div id="status" class="status" aria-live="polite"></div>
+    </section>
+
+    <section id="results" class="results" aria-live="polite">
+      <h2 class="results-title">投稿案</h2>
+      <div id="postsContainer"></div>
+    </section>
+
+    <p class="privacy">
+      入力内容・生成本文はGoogle Analyticsには送信しません。市場分析には属性・目的・口調・利用操作のみを使用する設計です。
+    </p>
+  </main>
+
+  <script>
+    // =========================
+    // 設定
+    // =========================
+    const WORKER_URL = "https://x-post-dify-proxy.hggr3hggr.workers.dev/";
+
+    // GA4導入時に "G-XXXXXXXXXX" を入れる。
+    // 空欄の間はAnalytics送信を行わない。
+    const GA_MEASUREMENT_ID = "";
+
+    // =========================
+    // GA4
+    // =========================
+    function setupGA4() {
+      if (!GA_MEASUREMENT_ID) return;
+
+      const script = document.createElement("script");
+      script.async = true;
+      script.src = "https://www.googletagmanager.com/gtag/js?id=" + encodeURIComponent(GA_MEASUREMENT_ID);
+      document.head.appendChild(script);
+
+      window.dataLayer = window.dataLayer || [];
+      window.gtag = function(){ dataLayer.push(arguments); };
+      gtag("js", new Date());
+      gtag("config", GA_MEASUREMENT_ID);
+    }
+
+    function trackEvent(name, params = {}) {
+      if (!GA_MEASUREMENT_ID || typeof window.gtag !== "function") return;
+      gtag("event", name, params);
+    }
+
+    setupGA4();
+
+    // =========================
+    // UI
+    // =========================
+    const seedText = document.getElementById("seed_text");
+    const inputCount = document.getElementById("inputCount");
+    const userType = document.getElementById("user_type");
+    const purpose = document.getElementById("purpose");
+    const audience = document.getElementById("audience");
+    const tone = document.getElementById("tone");
+    const generateBtn = document.getElementById("generateBtn");
+    const statusBox = document.getElementById("status");
+    const results = document.getElementById("results");
+    const postsContainer = document.getElementById("postsContainer");
+
+    let inputStarted = false;
+    let generatedOnce = false;
+
+    seedText.addEventListener("input", () => {
+      inputCount.textContent = seedText.value.length;
+
+      if (!inputStarted && seedText.value.length > 0) {
+        inputStarted = true;
+        trackEvent("input_start", {
+          input_length: seedText.value.length
+        });
+      }
+    });
+
+    function currentSegments() {
+      return {
+        user_type: userType.value,
+        purpose: purpose.value,
+        audience: audience.value,
+        tone: tone.value
+      };
+    }
+
+    function showStatus(message, type = "info") {
+      statusBox.textContent = message;
+      statusBox.className = "status show " + type;
+    }
+
+    function hideStatus() {
+      statusBox.className = "status";
+      statusBox.textContent = "";
+    }
+
+    function setLoading(isLoading) {
+      generateBtn.disabled = isLoading;
+
+      if (isLoading) {
+        generateBtn.innerHTML = '<span class="loading"></span>生成中…';
+      } else {
+        generateBtn.textContent = generatedOnce ? "もう一度3案つくる" : "X投稿を3案つくる";
+      }
+    }
+
+    function renderPosts(posts) {
+      postsContainer.innerHTML = "";
+
+      posts.forEach((post, index) => {
+        const card = document.createElement("article");
+        card.className = "post-card";
+
+        const head = document.createElement("div");
+        head.className = "post-head";
+
+        const angle = document.createElement("span");
+        angle.className = "angle";
+        angle.textContent = post.angle || `投稿案${index + 1}`;
+
+        const length = document.createElement("span");
+        length.className = "length";
+        length.textContent = `${[...String(post.text || "")].length}文字`;
+
+        head.appendChild(angle);
+        head.appendChild(length);
+
+        const text = document.createElement("p");
+        text.className = "post-text";
+        text.textContent = post.text || "";
+
+        const actions = document.createElement("div");
+        actions.className = "post-actions";
+
+        const copyBtn = document.createElement("button");
+        copyBtn.type = "button";
+        copyBtn.className = "copy-btn";
+        copyBtn.textContent = "コピー";
+
+        copyBtn.addEventListener("click", async () => {
+          try {
+            await navigator.clipboard.writeText(post.text || "");
+            copyBtn.textContent = "コピーしました";
+            copyBtn.classList.add("copied");
+
+            const seg = currentSegments();
+            trackEvent("copy_post", {
+              ...seg,
+              candidate_no: index + 1,
+              output_length: [...String(post.text || "")].length
+            });
+
+            setTimeout(() => {
+              copyBtn.textContent = "コピー";
+              copyBtn.classList.remove("copied");
+            }, 1600);
+          } catch (e) {
+            showStatus("コピーに失敗しました。本文を長押ししてコピーしてください。", "error");
+          }
+        });
+
+        actions.appendChild(copyBtn);
+        card.appendChild(head);
+        card.appendChild(text);
+        card.appendChild(actions);
+        postsContainer.appendChild(card);
+      });
+
+      results.classList.add("show");
+      results.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+
+    generateBtn.addEventListener("click", async () => {
+      hideStatus();
+
+      const seed = seedText.value.trim();
+
+      if (!seed) {
+        showStatus("「投稿したいこと」を入力してください。", "error");
+        seedText.focus();
+        return;
+      }
+
+      const payload = {
+        seed_text: seed,
+        user_type: userType.value,
+        purpose: purpose.value,
+        audience: audience.value,
+        tone: tone.value
+      };
+
+      const seg = currentSegments();
+
+      trackEvent(generatedOnce ? "regenerate_click" : "generate_click", {
+        ...seg,
+        input_length: seed.length
+      });
+
+      setLoading(true);
+
+      try {
+        const response = await fetch(WORKER_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(payload)
+        });
+
+        let data = {};
+        try {
+          data = await response.json();
+        } catch (_) {}
+
+        if (!response.ok) {
+          throw new Error(data.error || `HTTP ${response.status}`);
+        }
+
+        if (!Array.isArray(data.posts) || data.posts.length === 0) {
+          throw new Error("投稿案を取得できませんでした");
+        }
+
+        generatedOnce = true;
+        setLoading(false);
+        renderPosts(data.posts);
+        showStatus("3つの投稿案を作成しました。", "success");
+
+        trackEvent("generate_success", {
+          ...seg,
+          input_length: seed.length,
+          result_count: data.posts.length
+        });
+
+      } catch (error) {
+        console.error(error);
+        setLoading(false);
+        showStatus("生成に失敗しました。少し時間を置いて、もう一度お試しください。", "error");
+
+        trackEvent("generate_error", {
+          ...seg,
+          input_length: seed.length
+        });
+      }
+    });
+
+    // GA4有効時のみ
+    window.addEventListener("load", () => {
+      trackEvent("tool_view");
+    });
+  </script>
+</body>
+</html>
