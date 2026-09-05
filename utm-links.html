@@ -1,0 +1,742 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>UTMリンクコピーツール</title>
+  <meta name="description" content="X・Qiita・note・X広告などのUTM付きURLを媒体ごとに自動採番し、ワンクリックでコピーする管理ツール" />
+  <style>
+    :root{
+      --bg:#f6f7f9;
+      --card:#ffffff;
+      --text:#1f2937;
+      --muted:#6b7280;
+      --line:#e5e7eb;
+      --primary:#111827;
+      --primary-text:#ffffff;
+      --danger:#b91c1c;
+      --ok:#047857;
+      --shadow:0 8px 24px rgba(0,0,0,.06);
+      --radius:14px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      line-height:1.55;
+    }
+    .wrap{
+      width:min(100% - 24px, 980px);
+      margin:24px auto 56px;
+    }
+    h1{font-size:clamp(1.45rem,4vw,2rem);margin:0 0 6px}
+    h2{font-size:1.05rem;margin:0 0 14px}
+    p{margin:6px 0}
+    .muted{color:var(--muted);font-size:.92rem}
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:18px;
+      margin-top:16px;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:12px;
+    }
+    .field label{
+      display:block;
+      font-size:.84rem;
+      color:var(--muted);
+      margin-bottom:5px;
+      font-weight:600;
+    }
+    input,select{
+      width:100%;
+      border:1px solid #d1d5db;
+      border-radius:10px;
+      padding:11px 12px;
+      font:inherit;
+      background:white;
+      color:var(--text);
+    }
+    input:focus,select:focus{
+      outline:2px solid rgba(17,24,39,.14);
+      border-color:#9ca3af;
+    }
+    .toolbar{
+      display:flex;
+      flex-wrap:wrap;
+      gap:8px;
+      align-items:center;
+      margin-top:14px;
+    }
+    button{
+      border:0;
+      border-radius:10px;
+      padding:10px 13px;
+      font:inherit;
+      font-weight:700;
+      cursor:pointer;
+      transition:transform .04s ease, opacity .15s ease;
+    }
+    button:active{transform:translateY(1px)}
+    .primary{background:var(--primary);color:var(--primary-text)}
+    .secondary{background:#eef0f3;color:#111827}
+    .ghost{background:white;border:1px solid var(--line);color:#111827}
+    .danger{background:#fff1f2;color:var(--danger);border:1px solid #fecdd3}
+    .copy{background:#111827;color:white;white-space:nowrap}
+    .open{background:#eef0f3;color:#111827;white-space:nowrap}
+    .delete{background:transparent;color:#9ca3af;padding:8px}
+    .delete:hover{color:var(--danger)}
+    .search-row{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      margin-top:14px;
+    }
+    .search-row input{flex:1}
+    .list{
+      display:grid;
+      gap:10px;
+      margin-top:12px;
+    }
+    .item{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:13px;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) auto;
+      gap:12px;
+      align-items:center;
+      background:#fff;
+    }
+    .item-title{
+      font-weight:800;
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .badge{
+      display:inline-block;
+      font-size:.72rem;
+      line-height:1;
+      padding:5px 7px;
+      border-radius:999px;
+      background:#f3f4f6;
+      color:#4b5563;
+      font-weight:700;
+    }
+    .meta{
+      color:var(--muted);
+      font-size:.8rem;
+      margin-top:4px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+      max-width:100%;
+    }
+    .actions{
+      display:flex;
+      gap:6px;
+      align-items:center;
+    }
+    .empty{
+      text-align:center;
+      color:var(--muted);
+      padding:26px 8px;
+      border:1px dashed var(--line);
+      border-radius:12px;
+    }
+    .status{
+      position:fixed;
+      left:50%;
+      bottom:22px;
+      transform:translateX(-50%) translateY(20px);
+      opacity:0;
+      pointer-events:none;
+      background:#111827;
+      color:white;
+      padding:10px 14px;
+      border-radius:999px;
+      font-size:.9rem;
+      transition:.2s ease;
+      z-index:10;
+      max-width:calc(100vw - 24px);
+      text-align:center;
+    }
+    .status.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(0);
+    }
+    .section-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .count{font-size:.85rem;color:var(--muted)}
+    details{
+      margin-top:12px;
+      border-top:1px solid var(--line);
+      padding-top:12px;
+    }
+    summary{cursor:pointer;font-weight:700}
+    .small{font-size:.82rem}
+    .footer-note{
+      margin-top:16px;
+      color:var(--muted);
+      font-size:.82rem;
+    }
+    @media (max-width:720px){
+      .wrap{width:min(100% - 16px,980px);margin-top:12px}
+      .card{padding:14px}
+      .grid{grid-template-columns:1fr}
+      .item{
+        grid-template-columns:1fr;
+      }
+      .actions{
+        display:grid;
+        grid-template-columns:1fr 1fr auto;
+      }
+      .actions button{width:100%}
+      .meta{white-space:normal;word-break:break-all}
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <h1>UTMリンクコピーツール</h1>
+    <p class="muted">長いURLを選択せず、用途ごとのボタンからワンクリックでコピーします。</p>
+
+    <section class="card">
+      <h2>共通設定</h2>
+      <div class="grid">
+        <div class="field">
+          <label for="baseUrl">公開URL</label>
+          <input id="baseUrl" type="url" value="https://tetsutetsut2.github.io/x-post-maker/" />
+        </div>
+        <div class="field">
+          <label for="campaign">utm_campaign</label>
+          <input id="campaign" type="text" value="launch01" />
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="primary" id="copyNextX">X：次を追加してコピー</button>
+        <button class="primary" id="copyNextQiita">Qiita：次を追加してコピー</button>
+        <button class="primary" id="copyNextNote">note：次を追加してコピー</button>
+        <button class="primary" id="copyNextAd">X広告：次を追加してコピー</button>
+      </div>
+      <div class="toolbar">
+        <button class="secondary" id="addNextX">＋ X投稿だけ追加</button>
+        <button class="secondary" id="addNextQiita">＋ Qiita記事だけ追加</button>
+        <button class="secondary" id="addNextNote">＋ note記事だけ追加</button>
+        <button class="secondary" id="addNextAd">＋ X広告だけ追加</button>
+        <button class="ghost" id="addCustom">＋ その他リンクを追加</button>
+      </div>
+      <p class="muted small">
+        Xは post01 → post02、Qiita/noteは article01 → article02、X広告は ad01 → ad02 と媒体ごとに自動採番します。
+        「追加してコピー」を押せば、その場で次番号を作成してクリップボードへコピーします。
+      </p>
+    </section>
+
+    <section class="card" id="customForm" hidden>
+      <div class="section-head">
+        <h2>リンクを追加</h2>
+        <button class="ghost" id="closeCustom">閉じる</button>
+      </div>
+      <div class="grid">
+        <div class="field">
+          <label for="customName">表示名</label>
+          <input id="customName" placeholder="例：インフルエンサーA" />
+        </div>
+        <div class="field">
+          <label for="customSource">utm_source</label>
+          <input id="customSource" placeholder="例：influencer_a" />
+        </div>
+        <div class="field">
+          <label for="customMedium">utm_medium</label>
+          <input id="customMedium" placeholder="例：referral" />
+        </div>
+        <div class="field">
+          <label for="customContent">utm_content（任意）</label>
+          <input id="customContent" placeholder="例：post01" />
+        </div>
+      </div>
+      <div class="toolbar">
+        <button class="primary" id="saveCustom">追加する</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <h2>リンク一覧</h2>
+        <span class="count" id="count"></span>
+      </div>
+
+      <div class="search-row">
+        <input id="search" type="search" placeholder="X、Qiita、note、広告…で検索" />
+        <button class="ghost" id="clearSearch">クリア</button>
+      </div>
+
+      <div class="list" id="list"></div>
+
+      <details>
+        <summary>管理・バックアップ</summary>
+        <div class="toolbar">
+          <button class="ghost" id="exportJson">設定を書き出す</button>
+          <button class="ghost" id="importJson">設定を読み込む</button>
+          <button class="danger" id="reset">初期状態に戻す</button>
+        </div>
+        <input id="importFile" type="file" accept="application/json" hidden />
+        <p class="muted small">別PC・別ブラウザへ移す場合は「設定を書き出す」でJSONを保存し、「設定を読み込む」で復元できます。</p>
+      </details>
+    </section>
+
+    <p class="footer-note">
+      GitHub PagesのHTTPS上で使うと、コピー機能が安定して動作します。
+    </p>
+  </main>
+
+  <div class="status" id="status" role="status" aria-live="polite"></div>
+
+  <script>
+    (() => {
+      const STORAGE_KEY = "utm-link-copy-tool-v1";
+
+      const defaults = {
+        baseUrl: "https://tetsutetsut2.github.io/x-post-maker/",
+        campaign: "launch01",
+        links: [
+          { id: uid(), name: "X post01", source: "x", medium: "social", content: "post01" },
+          { id: uid(), name: "X post02", source: "x", medium: "social", content: "post02" },
+          { id: uid(), name: "X post03", source: "x", medium: "social", content: "post03" },
+          { id: uid(), name: "Qiita article01", source: "qiita", medium: "article", content: "article01" },
+          { id: uid(), name: "note article01", source: "note", medium: "article", content: "article01" },
+          { id: uid(), name: "X広告 ad01", source: "x", medium: "paid_social", content: "ad01" }
+        ]
+      };
+
+      let state = loadState();
+
+      const el = {
+        baseUrl: document.getElementById("baseUrl"),
+        campaign: document.getElementById("campaign"),
+        addNextX: document.getElementById("addNextX"),
+        addNextQiita: document.getElementById("addNextQiita"),
+        addNextNote: document.getElementById("addNextNote"),
+        addNextAd: document.getElementById("addNextAd"),
+        copyNextX: document.getElementById("copyNextX"),
+        copyNextQiita: document.getElementById("copyNextQiita"),
+        copyNextNote: document.getElementById("copyNextNote"),
+        copyNextAd: document.getElementById("copyNextAd"),
+        addCustom: document.getElementById("addCustom"),
+        customForm: document.getElementById("customForm"),
+        closeCustom: document.getElementById("closeCustom"),
+        customName: document.getElementById("customName"),
+        customSource: document.getElementById("customSource"),
+        customMedium: document.getElementById("customMedium"),
+        customContent: document.getElementById("customContent"),
+        saveCustom: document.getElementById("saveCustom"),
+        search: document.getElementById("search"),
+        clearSearch: document.getElementById("clearSearch"),
+        list: document.getElementById("list"),
+        count: document.getElementById("count"),
+        status: document.getElementById("status"),
+        exportJson: document.getElementById("exportJson"),
+        importJson: document.getElementById("importJson"),
+        importFile: document.getElementById("importFile"),
+        reset: document.getElementById("reset")
+      };
+
+      el.baseUrl.value = state.baseUrl;
+      el.campaign.value = state.campaign;
+
+      function uid() {
+        return (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
+      }
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return structuredCloneSafe(defaults);
+          const parsed = JSON.parse(raw);
+          if (!parsed || !Array.isArray(parsed.links)) throw new Error();
+          return {
+            baseUrl: parsed.baseUrl || defaults.baseUrl,
+            campaign: parsed.campaign || defaults.campaign,
+            links: parsed.links
+          };
+        } catch {
+          return structuredCloneSafe(defaults);
+        }
+      }
+
+      function structuredCloneSafe(obj) {
+        return JSON.parse(JSON.stringify(obj));
+      }
+
+      function saveState() {
+        state.baseUrl = el.baseUrl.value.trim();
+        state.campaign = el.campaign.value.trim();
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      function normalizeBaseUrl(value) {
+        let url = value.trim();
+        if (!url) throw new Error("公開URLを入力してください。");
+        const parsed = new URL(url);
+        return parsed;
+      }
+
+      function makeUrl(link) {
+        const url = normalizeBaseUrl(el.baseUrl.value);
+        const campaign = el.campaign.value.trim();
+
+        if (link.source) url.searchParams.set("utm_source", link.source);
+        if (link.medium) url.searchParams.set("utm_medium", link.medium);
+        if (campaign) url.searchParams.set("utm_campaign", campaign);
+        if (link.content) url.searchParams.set("utm_content", link.content);
+
+        return url.toString();
+      }
+
+      function getNextNumber(prefix, matcher) {
+        let max = 0;
+        for (const link of state.links) {
+          if (!matcher(link)) continue;
+          const candidates = [link.name, link.content].filter(Boolean).join(" ");
+          const m = candidates.match(new RegExp(prefix + "\s*0*(\d+)", "i"));
+          if (m) max = Math.max(max, Number(m[1]));
+        }
+        return max + 1;
+      }
+
+      function formatNumber(prefix, n) {
+        return prefix + String(n).padStart(2, "0");
+      }
+
+      function createTrackedLink(kind) {
+        let link;
+
+        if (kind === "x") {
+          const n = getNextNumber("post", l => l.source === "x" && l.medium === "social");
+          const content = formatNumber("post", n);
+          link = {
+            id: uid(),
+            name: "X " + content,
+            source: "x",
+            medium: "social",
+            content
+          };
+        } else if (kind === "qiita") {
+          const n = getNextNumber("article", l => l.source === "qiita");
+          const content = formatNumber("article", n);
+          link = {
+            id: uid(),
+            name: "Qiita " + content,
+            source: "qiita",
+            medium: "article",
+            content
+          };
+        } else if (kind === "note") {
+          const n = getNextNumber("article", l => l.source === "note");
+          const content = formatNumber("article", n);
+          link = {
+            id: uid(),
+            name: "note " + content,
+            source: "note",
+            medium: "article",
+            content
+          };
+        } else if (kind === "ad") {
+          const n = getNextNumber("ad", l => l.source === "x" && l.medium === "paid_social");
+          const content = formatNumber("ad", n);
+          link = {
+            id: uid(),
+            name: "X広告 " + content,
+            source: "x",
+            medium: "paid_social",
+            content
+          };
+        } else {
+          throw new Error("不明なリンク種別です。");
+        }
+
+        state.links.unshift(link);
+        saveState();
+        render();
+        return link;
+      }
+
+      async function copyText(text) {
+        try {
+          await navigator.clipboard.writeText(text);
+        } catch {
+          const ta = document.createElement("textarea");
+          ta.value = text;
+          ta.style.position = "fixed";
+          ta.style.opacity = "0";
+          document.body.appendChild(ta);
+          ta.focus();
+          ta.select();
+          document.execCommand("copy");
+          ta.remove();
+        }
+      }
+
+      function toast(message) {
+        el.status.textContent = message;
+        el.status.classList.add("show");
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => el.status.classList.remove("show"), 1800);
+      }
+
+      function render() {
+        saveState();
+
+        const q = el.search.value.trim().toLowerCase();
+        const links = state.links.filter(link => {
+          const hay = [link.name, link.source, link.medium, link.content].join(" ").toLowerCase();
+          return hay.includes(q);
+        });
+
+        el.list.innerHTML = "";
+        el.count.textContent = q
+          ? `${links.length}件 / 全${state.links.length}件`
+          : `${state.links.length}件`;
+
+        if (links.length === 0) {
+          el.list.innerHTML = '<div class="empty">該当するリンクがありません。</div>';
+          return;
+        }
+
+        for (const link of links) {
+          const item = document.createElement("div");
+          item.className = "item";
+
+          const left = document.createElement("div");
+          const title = document.createElement("div");
+          title.className = "item-title";
+
+          const name = document.createElement("span");
+          name.textContent = link.name;
+
+          const badge = document.createElement("span");
+          badge.className = "badge";
+          badge.textContent = link.medium || "link";
+
+          title.append(name, badge);
+
+          const meta = document.createElement("div");
+          meta.className = "meta";
+          meta.textContent = [
+            `source=${link.source || "-"}`,
+            `medium=${link.medium || "-"}`,
+            link.content ? `content=${link.content}` : null
+          ].filter(Boolean).join(" / ");
+
+          left.append(title, meta);
+
+          const actions = document.createElement("div");
+          actions.className = "actions";
+
+          const copyBtn = document.createElement("button");
+          copyBtn.className = "copy";
+          copyBtn.textContent = "コピー";
+          copyBtn.addEventListener("click", async () => {
+            try {
+              const url = makeUrl(link);
+              await copyText(url);
+              toast(`${link.name} をコピーしました`);
+            } catch (err) {
+              toast(err.message || "URLの作成に失敗しました");
+            }
+          });
+
+          const openBtn = document.createElement("button");
+          openBtn.className = "open";
+          openBtn.textContent = "開く";
+          openBtn.addEventListener("click", () => {
+            try {
+              window.open(makeUrl(link), "_blank", "noopener");
+            } catch (err) {
+              toast(err.message || "URLの作成に失敗しました");
+            }
+          });
+
+          const delBtn = document.createElement("button");
+          delBtn.className = "delete";
+          delBtn.textContent = "削除";
+          delBtn.setAttribute("aria-label", `${link.name} を削除`);
+          delBtn.addEventListener("click", () => {
+            if (!confirm(`「${link.name}」を削除しますか？`)) return;
+            state.links = state.links.filter(x => x.id !== link.id);
+            saveState();
+            render();
+          });
+
+          actions.append(copyBtn, openBtn, delBtn);
+          item.append(left, actions);
+          el.list.appendChild(item);
+        }
+      }
+
+      el.baseUrl.addEventListener("change", () => {
+        saveState();
+        toast("公開URLを保存しました");
+      });
+
+      el.campaign.addEventListener("change", () => {
+        saveState();
+        toast("キャンペーン名を保存しました");
+      });
+
+      function bindAddButton(element, kind) {
+        element.addEventListener("click", () => {
+          try {
+            const link = createTrackedLink(kind);
+            toast(`${link.name} を追加しました`);
+          } catch (err) {
+            toast(err.message || "リンクの追加に失敗しました");
+          }
+        });
+      }
+
+      function bindCopyNextButton(element, kind) {
+        element.addEventListener("click", async () => {
+          try {
+            const link = createTrackedLink(kind);
+            const url = makeUrl(link);
+            await copyText(url);
+            toast(`${link.name} を追加してコピーしました`);
+          } catch (err) {
+            toast(err.message || "URLの作成に失敗しました");
+          }
+        });
+      }
+
+      bindAddButton(el.addNextX, "x");
+      bindAddButton(el.addNextQiita, "qiita");
+      bindAddButton(el.addNextNote, "note");
+      bindAddButton(el.addNextAd, "ad");
+
+      bindCopyNextButton(el.copyNextX, "x");
+      bindCopyNextButton(el.copyNextQiita, "qiita");
+      bindCopyNextButton(el.copyNextNote, "note");
+      bindCopyNextButton(el.copyNextAd, "ad");
+
+      el.addCustom.addEventListener("click", () => {
+        el.customForm.hidden = false;
+        el.customName.focus();
+      });
+
+      el.closeCustom.addEventListener("click", () => {
+        el.customForm.hidden = true;
+      });
+
+      el.saveCustom.addEventListener("click", () => {
+        const name = el.customName.value.trim();
+        const source = el.customSource.value.trim();
+        const medium = el.customMedium.value.trim();
+        const content = el.customContent.value.trim();
+
+        if (!name || !source || !medium) {
+          toast("表示名・utm_source・utm_medium は必須です");
+          return;
+        }
+
+        state.links.unshift({
+          id: uid(),
+          name,
+          source,
+          medium,
+          content
+        });
+
+        saveState();
+        render();
+
+        el.customName.value = "";
+        el.customSource.value = "";
+        el.customMedium.value = "";
+        el.customContent.value = "";
+        el.customForm.hidden = true;
+        toast(`${name} を追加しました`);
+      });
+
+      el.search.addEventListener("input", render);
+
+      el.clearSearch.addEventListener("click", () => {
+        el.search.value = "";
+        render();
+        el.search.focus();
+      });
+
+      el.exportJson.addEventListener("click", () => {
+        saveState();
+        const blob = new Blob([JSON.stringify(state, null, 2)], { type: "application/json" });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "utm-links-backup.json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+        toast("設定を書き出しました");
+      });
+
+      el.importJson.addEventListener("click", () => {
+        el.importFile.click();
+      });
+
+      el.importFile.addEventListener("change", async () => {
+        const file = el.importFile.files?.[0];
+        if (!file) return;
+
+        try {
+          const parsed = JSON.parse(await file.text());
+          if (!parsed || !Array.isArray(parsed.links)) throw new Error("形式が正しくありません。");
+          state = {
+            baseUrl: parsed.baseUrl || defaults.baseUrl,
+            campaign: parsed.campaign || defaults.campaign,
+            links: parsed.links.map(link => ({
+              id: link.id || uid(),
+              name: String(link.name || "名称未設定"),
+              source: String(link.source || ""),
+              medium: String(link.medium || ""),
+              content: String(link.content || "")
+            }))
+          };
+          el.baseUrl.value = state.baseUrl;
+          el.campaign.value = state.campaign;
+          saveState();
+          render();
+          toast("設定を読み込みました");
+        } catch (err) {
+          toast(err.message || "読み込みに失敗しました");
+        } finally {
+          el.importFile.value = "";
+        }
+      });
+
+      el.reset.addEventListener("click", () => {
+        if (!confirm("リンク一覧と設定を初期状態に戻しますか？")) return;
+        state = structuredCloneSafe(defaults);
+        el.baseUrl.value = state.baseUrl;
+        el.campaign.value = state.campaign;
+        el.search.value = "";
+        saveState();
+        render();
+        toast("初期状態に戻しました");
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>
