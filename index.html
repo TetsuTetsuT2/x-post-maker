@@ -447,11 +447,29 @@
       gtag("config", GA_MEASUREMENT_ID, campaignConfig);
     }
 
-    function trackEvent(name, params = {}) {
-      if (!GA_MEASUREMENT_ID || typeof window.gtag !== "function") return;
-      gtag("event", name, params);
+    function getTrackingContext() {
+      const params = new URLSearchParams(window.location.search);
+
+      return {
+        xpm_source: params.get("utm_source") || "direct",
+        xpm_medium: params.get("utm_medium") || "none",
+        xpm_campaign: params.get("utm_campaign") || "none",
+        xpm_content: params.get("utm_content") || "none"
+      };
     }
 
+    function trackEvent(name, params = {}) {
+      if (!GA_MEASUREMENT_ID || typeof window.gtag !== "function") return;
+
+      // UTM情報をGA4のセッション帰属だけに頼らず、
+      // 各イベントへ直接付与する。
+      gtag("event", name, {
+        ...getTrackingContext(),
+        ...params
+      });
+    }
+
+    // XPM_UTM_EVENT_TRACKING_V1
     setupGA4();
 
     // =========================
