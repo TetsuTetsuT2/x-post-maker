@@ -409,6 +409,27 @@
     // =========================
     // GA4
     // =========================
+    function getGA4CampaignConfig() {
+      const params = new URLSearchParams(window.location.search);
+      const config = {};
+
+      const utmSource = params.get("utm_source");
+      const utmMedium = params.get("utm_medium");
+      const utmCampaign = params.get("utm_campaign");
+      const utmContent = params.get("utm_content");
+      const utmTerm = params.get("utm_term");
+      const utmId = params.get("utm_id");
+
+      if (utmSource) config.campaign_source = utmSource;
+      if (utmMedium) config.campaign_medium = utmMedium;
+      if (utmCampaign) config.campaign_name = utmCampaign;
+      if (utmContent) config.campaign_content = utmContent;
+      if (utmTerm) config.campaign_term = utmTerm;
+      if (utmId) config.campaign_id = utmId;
+
+      return config;
+    }
+
     function setupGA4() {
       if (!GA_MEASUREMENT_ID) return;
 
@@ -420,7 +441,10 @@
       window.dataLayer = window.dataLayer || [];
       window.gtag = function(){ dataLayer.push(arguments); };
       gtag("js", new Date());
-      gtag("config", GA_MEASUREMENT_ID);
+
+      // UTM付きURLでアクセスした場合は、GA4のキャンペーン情報として明示的に渡す。
+      const campaignConfig = getGA4CampaignConfig();
+      gtag("config", GA_MEASUREMENT_ID, campaignConfig);
     }
 
     function trackEvent(name, params = {}) {
