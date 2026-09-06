@@ -409,12 +409,24 @@
 
       function getNextNumber(prefix, matcher) {
         let max = 0;
+        const normalizedPrefix = String(prefix).toLowerCase();
+
         for (const link of state.links) {
           if (!matcher(link)) continue;
-          const candidates = [link.name, link.content].filter(Boolean).join(" ");
-          const m = candidates.match(new RegExp(prefix + "\s*0*(\d+)", "i"));
-          if (m) max = Math.max(max, Number(m[1]));
+
+          // content（例: post01 / article02 / ad03）を優先して番号を読む。
+          // 正規表現のエスケープ差異に依存しない方式にして、自動採番を安定させる。
+          const content = String(link.content || "").trim().toLowerCase();
+
+          if (content.startsWith(normalizedPrefix)) {
+            const numberPart = content.slice(normalizedPrefix.length);
+            const n = Number(numberPart);
+            if (Number.isInteger(n) && n > max) {
+              max = n;
+            }
+          }
         }
+
         return max + 1;
       }
 
